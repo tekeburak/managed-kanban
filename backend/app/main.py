@@ -69,11 +69,23 @@ async def move_ticket(ticket_id: str, payload: dict) -> Ticket:
     # Drag into "In Progress" is the trigger that fires a Managed Agents
     # session. Every other transition is just a UI move.
     if column == Column.IN_PROGRESS and current.column != Column.IN_PROGRESS:
+        # Reset run-specific state so a retry starts from a clean card.
         await store.update(
             ticket_id,
-            lambda t: setattr(t, "started_at", datetime.now(timezone.utc)),
+            lambda t: (
+                setattr(t, "started_at", datetime.now(timezone.utc)),
+                setattr(t, "finished_at", None),
+                setattr(t, "session_id", None),
+                setattr(t, "status_pill", None),
+                setattr(t, "score_before", None),
+                setattr(t, "score_after", None),
+                t.log.clear(),
+            ),
         )
         launch_session_task(ticket_id)
+        # Re-read so the response reflects the cleared fields, not the
+        # pre-reset snapshot we captured before the update above.
+        snapshot = store.get(ticket_id) or snapshot
 
     return snapshot
 

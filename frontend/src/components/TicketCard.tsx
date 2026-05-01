@@ -41,7 +41,10 @@ export function TicketCard({ ticket }: { ticket: Ticket }) {
           {ticket.id}
         </span>
         {isActive ? (
-          <Timer startedAt={ticket.started_at} />
+          <Timer
+            startedAt={ticket.started_at}
+            finishedAt={ticket.finished_at}
+          />
         ) : (
           <span
             className={
@@ -82,19 +85,39 @@ export function TicketCard({ ticket }: { ticket: Ticket }) {
   );
 }
 
-function Timer({ startedAt }: { startedAt: string | null }) {
+function Timer({
+  startedAt,
+  finishedAt,
+}: {
+  startedAt: string | null;
+  finishedAt: string | null;
+}) {
   const [, setNow] = useState(0);
+  // Only tick when the session is actively running. If it's finished, the
+  // displayed value is fixed (finishedAt - startedAt) and re-rendering once
+  // a second is wasted work — and the visible bug the user reported.
+  const isRunning = !!startedAt && !finishedAt;
   useEffect(() => {
+    if (!isRunning) return;
     const id = setInterval(() => setNow((n) => n + 1), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [isRunning]);
 
-  if (!startedAt) return <span className="text-xs font-mono text-ink-500">0:00</span>;
-  const elapsed = Math.max(
-    0,
-    Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000),
-  );
+  if (!startedAt) {
+    return <span className="text-xs font-mono text-ink-500">0:00</span>;
+  }
+  const start = new Date(startedAt).getTime();
+  const end = finishedAt ? new Date(finishedAt).getTime() : Date.now();
+  const elapsed = Math.max(0, Math.floor((end - start) / 1000));
   const m = Math.floor(elapsed / 60);
   const s = (elapsed % 60).toString().padStart(2, "0");
-  return <span className="text-xs font-mono text-ink-700">{m}:{s}</span>;
+  return (
+    <span
+      className={
+        "text-xs font-mono " + (finishedAt ? "text-ink-500" : "text-ink-700")
+      }
+    >
+      {m}:{s}
+    </span>
+  );
 }

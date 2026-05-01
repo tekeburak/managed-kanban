@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+from datetime import datetime, timezone
 from typing import Any
 
 from anthropic import AsyncAnthropic
@@ -97,6 +98,12 @@ async def run_session_for_ticket(ticket_id: str) -> None:
 
         async for event in stream:
             await _handle_event(ticket_id, event, session_id=session.id)
+            # session.status_idle means "agent has nothing more to do" —
+            # break to close the stream and proceed with auto-move-to-Review.
+            # Without this, the iterator stays open until the session is
+            # deleted server-side, so the card never advances.
+            if getattr(event, "type", None) == "session.status_idle":
+                break
 
     store.finalize_session(session.id)
     await store.update(
@@ -104,6 +111,7 @@ async def run_session_for_ticket(ticket_id: str) -> None:
         lambda t: (
             setattr(t, "column", Column.REVIEW),
             setattr(t, "status_pill", "Awaiting human review"),
+            setattr(t, "finished_at", datetime.now(timezone.utc)),
         ),
     )
 
@@ -188,7 +196,10 @@ def launch_session_task(ticket_id: str) -> asyncio.Task[None]:
             )
             await store.update(
                 ticket_id,
-                lambda t: setattr(t, "status_pill", "Session failed"),
+                lambda t: (
+                    setattr(t, "status_pill", "Session failed"),
+                    setattr(t, "finished_at", datetime.now(timezone.utc)),
+                ),
             )
             current = store.get(ticket_id)
             if current and current.session_id:
