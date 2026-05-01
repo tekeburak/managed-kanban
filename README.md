@@ -61,54 +61,51 @@ managed-kanban/
 
 ## Prerequisites
 
-- Python 3.11+
+- [`uv`](https://docs.astral.sh/uv/) (Python package manager) — `brew install uv`
 - Node 18+
 - An Anthropic API key with Managed Agents access (enabled by default for all
   API accounts as of the `managed-agents-2026-04-01` beta)
 
-## Setup
+## Quick start
 
 ```bash
-# 1) Configure
-cp .env.example .env
-# edit .env and put in your ANTHROPIC_API_KEY
-
-# 2) Backend deps + one-time agent/environment creation
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -e .
-python -m app.agent_setup     # populates MANAGED_AGENT_ID + MANAGED_ENVIRONMENT_ID in ../.env
-
-# 3) Frontend deps
-cd ../frontend
-npm install
+cp .env.example .env                # then put your ANTHROPIC_API_KEY in .env
+make install                        # installs backend (uv sync) + frontend (npm)
+make setup                          # one-time: creates the Agent + Environment in your Anthropic account
 ```
 
-## Run
-
-In two terminals:
+Then in two terminals:
 
 ```bash
-# Terminal 1: backend
-cd backend
-source .venv/bin/activate
-uvicorn app.main:app --port 8000 --reload
-
-# Terminal 2: frontend
-cd frontend
-npm run dev
+make backend     # FastAPI on :8000 with reload
+make frontend    # Vite dev server on :5173
 ```
 
 Open http://localhost:5173. Drag a ticket from **Backlog** to **In Progress** —
 a Managed Agents session is created, the card morphs to its active state, and
 the agent's tool calls / narration / scores stream in live.
 
-For a single-port production build:
+## Production-style single-port run
 
 ```bash
-cd frontend && npm run build     # writes ../frontend/dist
-cd ../backend && uvicorn app.main:app --port 8000
+make prod        # builds the frontend, then serves everything from FastAPI on :8000
 # open http://localhost:8000
+```
+
+## All Make targets
+
+```bash
+make help        # show every target with a one-line description
+make install     # install backend + frontend deps
+make setup       # one-time: create Agent + Environment, save IDs to .env
+make backend     # run FastAPI dev server (:8000, reload)
+make frontend    # run Vite dev server (:5173)
+make build       # build frontend bundle into frontend/dist
+make prod        # build + serve from FastAPI on :8000
+make fmt         # ruff format the backend
+make lint        # ruff check + frontend tsc --noEmit
+make reset       # forget the Anthropic resource IDs (forces re-setup)
+make clean       # nuke .venv, node_modules, caches
 ```
 
 ## The three seed tickets
