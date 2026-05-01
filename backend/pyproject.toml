@@ -1,0 +1,18 @@
+[project]
+name = "managed-kanban-backend"
+version = "0.1.0"
+description = "Kanban board backed by Anthropic Managed Agents"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "anthropic>=0.40",
+    "python-dotenv>=1.0",
+    "sse-starlette>=2.1",
+    "pydantic>=2.9",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "ruff>=0.7",
+]

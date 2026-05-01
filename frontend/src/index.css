@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+/* Mimic the slight grid noise of the demo background */
+.canvas-bg {
+  background-color: #f6f4ee;
+  background-image:
+    radial-gradient(rgba(15, 17, 21, 0.03) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
