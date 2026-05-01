@@ -1,21 +1,21 @@
+import { forwardRef } from "react";
 import type { View } from "../lib/types";
 
 const PLACEHOLDER: Record<View, string> = {
-  board: "Search tickets by ID, title, or description...",
-  sessions: "Search sessions by ID or ticket title...",
+  board: "Search tickets by ID, title, or description...  (press / to focus)",
+  sessions: "Search sessions by ID or ticket title...  (press / to focus)",
   memory: "Search disabled in Memory Store",
   settings: "Search disabled in Settings",
 };
 
-export function TopBar({
-  view,
-  search,
-  onSearch,
-}: {
-  view: View;
-  search: string;
-  onSearch: (s: string) => void;
-}) {
+export const TopBar = forwardRef<
+  HTMLInputElement,
+  {
+    view: View;
+    search: string;
+    onSearch: (s: string) => void;
+  }
+>(function TopBar({ view, search, onSearch }, ref) {
   const disabled = view === "memory" || view === "settings";
   return (
     <div className="flex items-center justify-between px-6 py-3 border-b border-ink-300/40 bg-canvas">
@@ -23,6 +23,7 @@ export function TopBar({
         <div className="bg-white border border-ink-300/50 rounded-full px-4 py-2 text-sm flex items-center gap-2">
           <span className="text-ink-500">🔍</span>
           <input
+            ref={ref}
             type="text"
             value={disabled ? "" : search}
             onChange={(e) => onSearch(e.target.value)}
@@ -55,7 +56,7 @@ export function TopBar({
       </div>
     </div>
   );
-}
+});
 
 export function BoardHeader() {
   return (
