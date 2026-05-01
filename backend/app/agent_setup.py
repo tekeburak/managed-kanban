@@ -52,37 +52,46 @@ def main() -> int:
         print(f"Copy .env.example to .env and fill it in.", file=sys.stderr)
         return 1
 
-    existing_agent = os.environ.get("MANAGED_AGENT_ID")
-    existing_env = os.environ.get("MANAGED_ENVIRONMENT_ID")
-    if existing_agent and existing_env:
-        print(f"Already configured. Reusing existing resources:")
-        print(f"  MANAGED_AGENT_ID       = {existing_agent}")
-        print(f"  MANAGED_ENVIRONMENT_ID = {existing_env}")
+    agent_id = os.environ.get("MANAGED_AGENT_ID") or None
+    environment_id = os.environ.get("MANAGED_ENVIRONMENT_ID") or None
+
+    if agent_id and environment_id:
+        print("Already configured. Reusing existing resources:")
+        print(f"  MANAGED_AGENT_ID       = {agent_id}")
+        print(f"  MANAGED_ENVIRONMENT_ID = {environment_id}")
         return 0
 
     client = Anthropic()
 
-    print("Creating managed-kanban agent...")
-    agent = client.beta.agents.create(
-        name="managed-kanban",
-        model="claude-opus-4-7",
-        system=SYSTEM_PROMPT,
-        tools=[{"type": "agent_toolset_20260401"}],
-    )
-    print(f"  agent.id      = {agent.id}")
-    print(f"  agent.version = {agent.version}")
+    if agent_id:
+        print(f"Reusing existing agent:     {agent_id}")
+    else:
+        print("Creating managed-kanban agent...")
+        agent = client.beta.agents.create(
+            name="managed-kanban",
+            model="claude-opus-4-7",
+            system=SYSTEM_PROMPT,
+            tools=[{"type": "agent_toolset_20260401"}],
+        )
+        agent_id = agent.id
+        print(f"  agent.id      = {agent_id}")
+        print(f"  agent.version = {agent.version}")
 
-    print("Creating managed-kanban environment...")
-    environment = client.beta.environments.create(
-        name="managed-kanban-env",
-        config={
-            "type": "cloud",
-            "networking": {"type": "unrestricted"},
-        },
-    )
-    print(f"  environment.id = {environment.id}")
+    if environment_id:
+        print(f"Reusing existing environment: {environment_id}")
+    else:
+        print("Creating managed-kanban environment...")
+        environment = client.beta.environments.create(
+            name="managed-kanban-env",
+            config={
+                "type": "cloud",
+                "networking": {"type": "unrestricted"},
+            },
+        )
+        environment_id = environment.id
+        print(f"  environment.id = {environment_id}")
 
-    _persist_env(agent_id=agent.id, environment_id=environment.id)
+    _persist_env(agent_id=agent_id, environment_id=environment_id)
     print(f"\nSaved IDs to {ENV_FILE}.")
     return 0
 

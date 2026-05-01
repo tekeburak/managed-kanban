@@ -46,3 +46,33 @@ class Ticket(BaseModel):
 
 class MoveRequest(BaseModel):
     column: Column
+
+
+class SessionStatus(str, Enum):
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class SessionInfo(BaseModel):
+    id: str
+    ticket_id: str
+    ticket_title: str
+    status: SessionStatus
+    started_at: datetime
+    finished_at: datetime | None = None
+    tool_calls: int = 0
+    log_entries: int = 0
+
+
+class MemoryNotes(BaseModel):
+    notes: str = ""
+
+
+class Settings(BaseModel):
+    agent_id: str | None
+    environment_id: str | None
+    model: str
+    system_prompt: str
+    total_sessions: int
+    active_sessions: int

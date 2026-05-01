@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,8 +13,16 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 
+from app.agent_setup import SYSTEM_PROMPT
 from app.managed_agents import launch_session_task
-from app.models import Column, Ticket
+from app.models import (
+    Column,
+    MemoryNotes,
+    SessionInfo,
+    SessionStatus,
+    Settings,
+    Ticket,
+)
 from app.store import store
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
@@ -93,6 +102,35 @@ async def stream_ticket(ticket_id: str):
             store.unsubscribe(ticket_id, queue)
 
     return EventSourceResponse(event_source())
+
+
+@app.get("/api/sessions")
+def list_sessions() -> list[SessionInfo]:
+    return store.list_sessions()
+
+
+@app.get("/api/memory")
+def get_memory() -> MemoryNotes:
+    return MemoryNotes(notes=store.get_memory_notes())
+
+
+@app.put("/api/memory")
+def put_memory(payload: MemoryNotes) -> MemoryNotes:
+    store.set_memory_notes(payload.notes)
+    return MemoryNotes(notes=store.get_memory_notes())
+
+
+@app.get("/api/settings")
+def get_settings() -> Settings:
+    sessions = store.list_sessions()
+    return Settings(
+        agent_id=os.environ.get("MANAGED_AGENT_ID"),
+        environment_id=os.environ.get("MANAGED_ENVIRONMENT_ID"),
+        model="claude-opus-4-7",
+        system_prompt=SYSTEM_PROMPT,
+        total_sessions=len(sessions),
+        active_sessions=sum(1 for s in sessions if s.status == SessionStatus.RUNNING),
+    )
 
 
 # Serve the built frontend in production. In dev, Vite runs on :5173 and

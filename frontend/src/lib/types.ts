@@ -32,3 +32,27 @@ export const COLUMNS: { id: Column; label: string; dot: string }[] = [
   { id: "review", label: "REVIEW", dot: "bg-amber-500" },
   { id: "done", label: "DONE", dot: "bg-emerald-500" },
 ];
+
+export type View = "board" | "sessions" | "memory" | "settings";
+
+export type SessionStatus = "running" | "completed" | "failed";
+
+export type SessionInfo = {
+  id: string;
+  ticket_id: string;
+  ticket_title: string;
+  status: SessionStatus;
+  started_at: string;
+  finished_at: string | null;
+  tool_calls: number;
+  log_entries: number;
+};
+
+export type Settings = {
+  agent_id: string | null;
+  environment_id: string | null;
+  model: string;
+  system_prompt: string;
+  total_sessions: number;
+  active_sessions: number;
+};

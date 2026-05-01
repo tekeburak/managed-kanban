@@ -11,7 +11,7 @@ import { listTickets, moveTicket, subscribeTicket } from "../lib/api";
 import type { Column as ColumnId, Ticket } from "../lib/types";
 import { COLUMNS } from "../lib/types";
 
-export function Board() {
+export function Board({ search }: { search: string }) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,6 +79,17 @@ export function Board() {
     );
   }
 
+  const q = search.trim().toLowerCase();
+  const visibleTickets = q
+    ? tickets.filter(
+        (t) =>
+          t.id.toLowerCase().includes(q) ||
+          t.title.toLowerCase().includes(q) ||
+          t.description.toLowerCase().includes(q) ||
+          (t.tag ?? "").toLowerCase().includes(q),
+      )
+    : tickets;
+
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
       <div className="flex gap-5">
@@ -86,7 +97,7 @@ export function Board() {
           <Column
             key={col.id}
             id={col.id}
-            tickets={tickets.filter((t) => t.column === col.id)}
+            tickets={visibleTickets.filter((t) => t.column === col.id)}
           />
         ))}
       </div>

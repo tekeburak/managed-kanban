@@ -3,13 +3,14 @@ from __future__ import annotations
 import asyncio
 from collections import defaultdict
 from copy import deepcopy
+from datetime import datetime, timezone
 
-from app.models import Column, LogEntry, Ticket
+from app.models import Column, LogEntry, SessionInfo, SessionStatus, Ticket
 from app.seed import SEED_TICKETS
 
 
 class TicketStore:
-    """In-memory ticket store with per-ticket fan-out for SSE subscribers.
+    """In-memory store with per-ticket fan-out for SSE subscribers.
 
     Demo-grade: a process restart loses all session state. Swap in a database
     if you ever care about persistence.
@@ -18,6 +19,8 @@ class TicketStore:
     def __init__(self) -> None:
         self._tickets: dict[str, Ticket] = {t.id: deepcopy(t) for t in SEED_TICKETS}
         self._subscribers: dict[str, list[asyncio.Queue[Ticket]]] = defaultdict(list)
+        self._sessions: dict[str, SessionInfo] = {}
+        self._memory_notes: str = ""
         self._lock = asyncio.Lock()
 
     def list(self) -> list[Ticket]:
@@ -63,6 +66,50 @@ class TicketStore:
             except asyncio.QueueFull:
                 # Slow subscriber; drop and let them resync via GET.
                 pass
+
+    # --- session history ---------------------------------------------------
+
+    def record_session(self, *, session_id: str, ticket_id: str) -> None:
+        ticket = self._tickets.get(ticket_id)
+        title = ticket.title if ticket else ticket_id
+        self._sessions[session_id] = SessionInfo(
+            id=session_id,
+            ticket_id=ticket_id,
+            ticket_title=title,
+            status=SessionStatus.RUNNING,
+            started_at=datetime.now(timezone.utc),
+        )
+
+    def increment_session_metric(self, session_id: str, *, tool: bool = False) -> None:
+        info = self._sessions.get(session_id)
+        if info is None:
+            return
+        info.log_entries += 1
+        if tool:
+            info.tool_calls += 1
+
+    def finalize_session(self, session_id: str, *, failed: bool = False) -> None:
+        info = self._sessions.get(session_id)
+        if info is None:
+            return
+        info.status = SessionStatus.FAILED if failed else SessionStatus.COMPLETED
+        info.finished_at = datetime.now(timezone.utc)
+
+    def list_sessions(self) -> list[SessionInfo]:
+        # Newest first
+        return sorted(
+            (deepcopy(s) for s in self._sessions.values()),
+            key=lambda s: s.started_at,
+            reverse=True,
+        )
+
+    # --- memory notes ------------------------------------------------------
+
+    def get_memory_notes(self) -> str:
+        return self._memory_notes
+
+    def set_memory_notes(self, notes: str) -> None:
+        self._memory_notes = notes
 
 
 store = TicketStore()

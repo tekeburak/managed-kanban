@@ -64,6 +64,8 @@ async def run_session_for_ticket(ticket_id: str) -> None:
         title=f"{ticket.id}: {ticket.title}",
     )
 
+    store.record_session(session_id=session.id, ticket_id=ticket_id)
+
     await store.update(
         ticket_id,
         lambda t: (
@@ -73,20 +75,30 @@ async def run_session_for_ticket(ticket_id: str) -> None:
         ),
     )
 
-    async with api.beta.sessions.events.stream(session.id) as stream:
+    notes = store.get_memory_notes().strip()
+    user_text = (
+        f"Standing notes / memory:\n{notes}\n\n---\n\n{ticket.description}"
+        if notes
+        else ticket.description
+    )
+
+    # events.stream() is an async function that returns an AsyncStream context
+    # manager — hence the doubled `async with await ...`.
+    async with await api.beta.sessions.events.stream(session.id) as stream:
         await api.beta.sessions.events.send(
             session.id,
             events=[
                 {
                     "type": "user.message",
-                    "content": [{"type": "text", "text": ticket.description}],
+                    "content": [{"type": "text", "text": user_text}],
                 }
             ],
         )
 
         async for event in stream:
-            await _handle_event(ticket_id, event)
+            await _handle_event(ticket_id, event, session_id=session.id)
 
+    store.finalize_session(session.id)
     await store.update(
         ticket_id,
         lambda t: (
@@ -96,7 +108,7 @@ async def run_session_for_ticket(ticket_id: str) -> None:
     )
 
 
-async def _handle_event(ticket_id: str, event: Any) -> None:
+async def _handle_event(ticket_id: str, event: Any, *, session_id: str) -> None:
     etype = getattr(event, "type", None)
 
     if etype == "agent.message":
@@ -105,10 +117,12 @@ async def _handle_event(ticket_id: str, event: Any) -> None:
         )
         if not text:
             return
+        store.increment_session_metric(session_id)
         await _consume_agent_text(ticket_id, text)
 
     elif etype == "agent.tool_use":
         name = getattr(event, "name", "tool")
+        store.increment_session_metric(session_id, tool=True)
         await store.append_log(
             ticket_id,
             LogEntry(kind="tool_use", text=f"Running: {name}"),
@@ -176,5 +190,8 @@ def launch_session_task(ticket_id: str) -> asyncio.Task[None]:
                 ticket_id,
                 lambda t: setattr(t, "status_pill", "Session failed"),
             )
+            current = store.get(ticket_id)
+            if current and current.session_id:
+                store.finalize_session(current.session_id, failed=True)
 
     return asyncio.create_task(runner())
