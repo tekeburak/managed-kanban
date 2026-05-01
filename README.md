@@ -92,6 +92,18 @@ make prod        # builds the frontend, then serves everything from FastAPI on :
 # open http://localhost:8000
 ```
 
+## Keyboard shortcuts
+
+| Key | Action |
+|---|---|
+| `1` | Switch to Board |
+| `2` | Switch to Sessions |
+| `3` | Switch to Memory Store |
+| `4` | Switch to Settings |
+| `/` | Focus the search input |
+
+Shortcuts are suppressed while you're typing in a form field.
+
 ## All Make targets
 
 ```bash
