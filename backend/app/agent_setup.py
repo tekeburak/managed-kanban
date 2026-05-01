@@ -49,7 +49,7 @@ def main() -> int:
 
     if not os.environ.get("ANTHROPIC_API_KEY"):
         print("ERROR: ANTHROPIC_API_KEY is not set.", file=sys.stderr)
-        print(f"Copy .env.example to .env and fill it in.", file=sys.stderr)
+        print("Copy .env.example to .env and fill it in.", file=sys.stderr)
         return 1
 
     agent_id = os.environ.get("MANAGED_AGENT_ID") or None

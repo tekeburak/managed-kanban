@@ -3,11 +3,11 @@ from __future__ import annotations
 import asyncio
 import os
 import re
-from typing import Any, AsyncIterator
+from typing import Any
 
 from anthropic import AsyncAnthropic
 
-from app.models import Column, LogEntry, Ticket
+from app.models import Column, LogEntry
 from app.store import store
 
 _client: AsyncAnthropic | None = None

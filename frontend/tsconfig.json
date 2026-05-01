@@ -14,7 +14,8 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": false
+    "verbatimModuleSyntax": false,
+    "noEmit": true
   },
   "include": ["src"]
 }
