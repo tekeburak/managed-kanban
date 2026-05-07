@@ -20,6 +20,9 @@ build/
 .env.*.local
 !.env.example
 
+# Streamlit secrets (allow the example template through)
+.streamlit/secrets.toml
+
 # Editor
 .vscode/
 .idea/

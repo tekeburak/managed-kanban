@@ -85,6 +85,43 @@ Open http://localhost:5173. Drag a ticket from **Backlog** to **In Progress** â€
 a Managed Agents session is created, the card morphs to its active state, and
 the agent's tool calls / narration / scores stream in live.
 
+## Streamlit version (zero-install demo)
+
+For showing this off on a locked-down machine where you cannot install
+`uvicorn` / `node` / build tools, there is a Streamlit port that runs the
+same backend (drag-and-drop kanban, live agent stream, status pill, score
+widget, log) with no FastAPI and no React build step.
+
+### Run locally
+
+```bash
+pip install -r requirements.txt
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml   # edit your API key
+streamlit run streamlit_app.py
+```
+
+Open http://localhost:8501. The first run lazily creates the Anthropic Agent
+and Environment and caches their IDs in process memory.
+
+### Deploy to Streamlit Cloud (free, public URL)
+
+1. Push this branch to GitHub (the `streamlit` branch).
+2. Go to [share.streamlit.io](https://share.streamlit.io) and click **New app**.
+3. Pick repo `tekeburak/managed-kanban`, branch `streamlit`, main file
+   `streamlit_app.py`.
+4. Open **Advanced settings â†’ Secrets** and paste:
+   ```toml
+   ANTHROPIC_API_KEY = "sk-ant-..."
+   ```
+   Optionally also paste `MANAGED_AGENT_ID` / `MANAGED_ENVIRONMENT_ID` to
+   reuse pre-created resources.
+5. Click **Deploy**. After ~1 minute you get a public URL like
+   `https://managed-kanban.streamlit.app`.
+
+The Streamlit entrypoint is `streamlit_app.py` at the repo root. It imports
+the existing `backend/app/*` modules (store, models, managed_agents) so the
+agent integration is identical to the FastAPI version.
+
 ## Production-style single-port run
 
 ```bash
