@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from anthropic import Anthropic
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -132,14 +134,45 @@ def put_memory(payload: MemoryNotes) -> MemoryNotes:
     return MemoryNotes(notes=store.get_memory_notes())
 
 
+_AGENT_CACHE: dict[str, tuple[float, str, str]] = {}
+_AGENT_TTL = 30.0
+
+
+def _fetch_agent_meta(agent_id: str) -> tuple[str, str]:
+    """Return (model, system_prompt) for the agent, cached for _AGENT_TTL seconds."""
+    now = time.monotonic()
+    cached = _AGENT_CACHE.get(agent_id)
+    if cached and now - cached[0] < _AGENT_TTL:
+        return cached[1], cached[2]
+
+    client = Anthropic()
+    agent = client.beta.agents.retrieve(agent_id)
+    # `agent.model` is a ModelConfig object whose `.id` is the actual model name.
+    model_obj = getattr(agent, "model", None)
+    model = getattr(model_obj, "id", "") if model_obj is not None else ""
+    system = getattr(agent, "system", None) or SYSTEM_PROMPT
+    _AGENT_CACHE[agent_id] = (now, model, system)
+    return model, system
+
+
 @app.get("/api/settings")
 def get_settings() -> Settings:
     sessions = store.list_sessions()
+    agent_id = os.environ.get("MANAGED_AGENT_ID")
+    model = ""
+    system_prompt = SYSTEM_PROMPT
+    if agent_id:
+        try:
+            model, system_prompt = _fetch_agent_meta(agent_id)
+        except Exception:
+            # Fall back to empty model and the static prompt if the API is
+            # unreachable; settings should still render.
+            pass
     return Settings(
-        agent_id=os.environ.get("MANAGED_AGENT_ID"),
+        agent_id=agent_id,
         environment_id=os.environ.get("MANAGED_ENVIRONMENT_ID"),
-        model="claude-opus-4-7",
-        system_prompt=SYSTEM_PROMPT,
+        model=model,
+        system_prompt=system_prompt,
         total_sessions=len(sessions),
         active_sessions=sum(1 for s in sessions if s.status == SessionStatus.RUNNING),
     )
