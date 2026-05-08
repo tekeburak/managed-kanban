@@ -26,7 +26,7 @@ export function Column({
   const { isOver, setNodeRef } = useDroppable({ id });
 
   return (
-    <div className="flex-1 min-w-0 basis-0">
+    <div className="w-full min-w-0">
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
           <span className={"w-2 h-2 rounded-full " + DOT[id]} />

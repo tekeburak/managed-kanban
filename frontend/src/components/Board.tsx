@@ -92,13 +92,17 @@ export function Board({ search }: { search: string }) {
 
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="flex gap-5">
+      <div className="flex gap-5 overflow-x-auto lg:overflow-visible snap-x snap-mandatory lg:snap-none -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
         {COLUMNS.map((col) => (
-          <Column
+          <div
             key={col.id}
-            id={col.id}
-            tickets={visibleTickets.filter((t) => t.column === col.id)}
-          />
+            className="snap-start shrink-0 w-[85vw] max-w-[320px] lg:w-auto lg:max-w-none lg:flex-1 lg:min-w-0 lg:basis-0"
+          >
+            <Column
+              id={col.id}
+              tickets={visibleTickets.filter((t) => t.column === col.id)}
+            />
+          </div>
         ))}
       </div>
     </DndContext>
