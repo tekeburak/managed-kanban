@@ -12,7 +12,10 @@ export async function moveTicket(id: string, column: Column): Promise<Ticket> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ column }),
   });
-  if (!res.ok) throw new Error("failed to move ticket");
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`move failed (${res.status}): ${body || res.statusText}`);
+  }
   return res.json();
 }
 

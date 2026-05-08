@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 
 from app.agent_setup import SYSTEM_PROMPT
-from app.managed_agents import launch_session_task
+from app.managed_agents import cancel_session_task, launch_session_task
 from app.models import (
     Column,
     MemoryNotes,
@@ -65,6 +65,12 @@ async def move_ticket(ticket_id: str, payload: dict) -> Ticket:
     current = store.get(ticket_id)
     if current is None:
         raise HTTPException(404, "ticket not found")
+
+    # If the user drags an actively-running ticket out of IN_PROGRESS, cancel
+    # the agent session so we stop billing tokens and don't race the auto-
+    # finish update.
+    if current.column == Column.IN_PROGRESS and column != Column.IN_PROGRESS:
+        await cancel_session_task(ticket_id)
 
     snapshot = await store.move(ticket_id, column)
 

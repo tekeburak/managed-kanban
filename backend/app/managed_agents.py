@@ -109,14 +109,23 @@ async def run_session_for_ticket(ticket_id: str) -> None:
                 break
 
     store.finalize_session(session.id)
-    await store.update(
-        ticket_id,
-        lambda t: (
-            setattr(t, "column", Column.REVIEW),
-            setattr(t, "status_pill", "Awaiting human review"),
-            setattr(t, "finished_at", datetime.now(timezone.utc)),
-        ),
-    )
+    # Only auto-advance the card to Review if the user hasn't already moved
+    # it elsewhere — otherwise we clobber a manual drag.
+    current = store.get(ticket_id)
+    if current is not None and current.column == Column.IN_PROGRESS:
+        await store.update(
+            ticket_id,
+            lambda t: (
+                setattr(t, "column", Column.REVIEW),
+                setattr(t, "status_pill", "Awaiting human review"),
+                setattr(t, "finished_at", datetime.now(timezone.utc)),
+            ),
+        )
+    else:
+        await store.update(
+            ticket_id,
+            lambda t: setattr(t, "finished_at", datetime.now(timezone.utc)),
+        )
 
 
 async def _handle_event(ticket_id: str, event: Any, *, session_id: str) -> None:
@@ -182,16 +191,36 @@ async def _consume_agent_text(ticket_id: str, text: str) -> None:
         )
 
 
+_RUNNING_TASKS: dict[str, asyncio.Task[None]] = {}
+
+
 def launch_session_task(ticket_id: str) -> asyncio.Task[None]:
     """Fire-and-forget: run the session in the background.
 
     The HTTP request returns immediately while the long-running session
-    continues to push updates into the per-ticket queue.
+    continues to push updates into the per-ticket queue. The task handle is
+    kept in _RUNNING_TASKS so the API can cancel it on a manual move.
     """
 
     async def runner() -> None:
         try:
             await run_session_for_ticket(ticket_id)
+        except asyncio.CancelledError:
+            await store.append_log(
+                ticket_id,
+                LogEntry(kind="system", text="Session cancelled by user."),
+            )
+            await store.update(
+                ticket_id,
+                lambda t: (
+                    setattr(t, "status_pill", "Cancelled"),
+                    setattr(t, "finished_at", datetime.now(timezone.utc)),
+                ),
+            )
+            current = store.get(ticket_id)
+            if current and current.session_id:
+                store.finalize_session(current.session_id, failed=True)
+            raise
         except Exception as exc:  # surface to the UI; don't crash the server
             await store.append_log(
                 ticket_id,
@@ -207,5 +236,26 @@ def launch_session_task(ticket_id: str) -> asyncio.Task[None]:
             current = store.get(ticket_id)
             if current and current.session_id:
                 store.finalize_session(current.session_id, failed=True)
+        finally:
+            _RUNNING_TASKS.pop(ticket_id, None)
 
-    return asyncio.create_task(runner())
+    task = asyncio.create_task(runner())
+    _RUNNING_TASKS[ticket_id] = task
+    return task
+
+
+async def cancel_session_task(ticket_id: str) -> bool:
+    """Cancel the in-flight session task for a ticket if one exists.
+
+    Returns True if a task was cancelled. Safe to call when nothing is
+    running.
+    """
+    task = _RUNNING_TASKS.get(ticket_id)
+    if task is None or task.done():
+        return False
+    task.cancel()
+    try:
+        await task
+    except (asyncio.CancelledError, Exception):
+        pass
+    return True
