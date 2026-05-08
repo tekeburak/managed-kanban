@@ -80,24 +80,74 @@ export function ActiveCardBody({ ticket }: { ticket: Ticket }) {
 }
 
 function ScoreWidget({ before, after }: { before: number; after: number }) {
-  const positive = after > before;
-  const neutral = after === before;
-  const afterTone = positive
-    ? "text-emerald-600"
+  const delta = after - before;
+  const positive = delta > 0;
+  const neutral = delta === 0;
+  const max = Math.max(before, after, 100);
+  const pctBefore = Math.max(0, Math.min(100, (before / max) * 100));
+  const pctAfter = Math.max(0, Math.min(100, (after / max) * 100));
+  const trackTone = neutral
+    ? "bg-ink-300/40"
+    : positive
+      ? "bg-emerald-100"
+      : "bg-red-100";
+  const fillTone = neutral
+    ? "bg-ink-500"
+    : positive
+      ? "bg-emerald-500"
+      : "bg-red-500";
+  const deltaTone = positive
+    ? "text-emerald-700 bg-emerald-50 border-emerald-200"
     : neutral
-      ? "text-ink-700"
-      : "text-red-600";
+      ? "text-ink-700 bg-ink-300/30 border-ink-300/60"
+      : "text-red-700 bg-red-50 border-red-200";
+  const deltaSign = positive ? "+" : "";
 
   return (
-    <div className="flex items-center justify-between bg-white rounded-md px-3 py-2 mb-3 border border-ink-300/50">
-      <span className="text-[10px] uppercase tracking-[0.18em] text-ink-500 font-semibold">
-        Score
-      </span>
-      <span className="font-mono text-base flex items-baseline gap-2">
-        <span className="text-red-600 font-bold">{before}</span>
+    <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg px-3 py-2.5 mb-3 border border-ink-300/50">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] uppercase tracking-wider text-ink-500 font-bold">
+          Score
+        </span>
+        <span
+          className={
+            "text-[10px] font-bold px-1.5 py-0.5 rounded border " + deltaTone
+          }
+        >
+          {deltaSign}
+          {delta}
+        </span>
+      </div>
+
+      <div className="flex items-baseline gap-2 font-mono mb-2">
+        <span className="text-base text-ink-500 line-through decoration-ink-300">
+          {before}
+        </span>
         <span className="text-ink-300">→</span>
-        <span className={"font-bold " + afterTone}>{after}</span>
-      </span>
+        <span
+          className={
+            "text-2xl font-extrabold leading-none " +
+            (positive
+              ? "text-emerald-600"
+              : neutral
+                ? "text-ink-700"
+                : "text-red-600")
+          }
+        >
+          {after}
+        </span>
+      </div>
+
+      <div className={"relative h-1.5 rounded-full overflow-hidden " + trackTone}>
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-ink-300/70 transition-all"
+          style={{ width: `${pctBefore}%` }}
+        />
+        <div
+          className={"absolute inset-y-0 left-0 rounded-full transition-all " + fillTone}
+          style={{ width: `${pctAfter}%` }}
+        />
+      </div>
     </div>
   );
 }
