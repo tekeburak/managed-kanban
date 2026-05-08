@@ -42,8 +42,11 @@ def _environment_id() -> str:
 # Agent system prompt asks for STATUS:/SCORE: lines so the frontend can lift
 # them out of the message stream and render them as pills/widgets — without
 # needing a separately-hosted MCP control server.
-STATUS_RE = re.compile(r"^\s*STATUS:\s*(.+?)\s*$", re.MULTILINE)
-SCORE_RE = re.compile(r"^\s*SCORE:\s*(\d+)\s*->\s*(\d+)\s*$", re.MULTILINE)
+STATUS_RE = re.compile(r"^[\s>*_`]*STATUS:[\s*_`]*(.+?)[\s*_`]*$", re.MULTILINE)
+SCORE_RE = re.compile(
+    r"^[\s>*_`]*SCORE:[\s*_`]*(\d+)\s*(?:->|→|=>)\s*(\d+)[\s*_`]*$",
+    re.MULTILINE,
+)
 
 
 async def run_session_for_ticket(ticket_id: str) -> None:
