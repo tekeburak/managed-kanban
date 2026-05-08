@@ -33,6 +33,13 @@ export function ActiveCardBody({ ticket }: { ticket: Ticket }) {
         />
       )}
 
+      {ticket.failed_attempt && (
+        <FailureBlock
+          number={ticket.failed_attempt.number}
+          reason={ticket.failed_attempt.reason}
+        />
+      )}
+
       {ticket.log.length > 0 && (
         <ToolStrip log={ticket.log} />
       )}
@@ -91,6 +98,30 @@ function ScoreWidget({ before, after }: { before: number; after: number }) {
         <span className="text-ink-300">→</span>
         <span className={"font-bold " + afterTone}>{after}</span>
       </span>
+    </div>
+  );
+}
+
+function FailureBlock({
+  number,
+  reason,
+}: {
+  number: number;
+  reason: string;
+}) {
+  return (
+    <div className="flex gap-2 bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3">
+      <span className="text-red-600 text-base leading-none mt-0.5" aria-hidden>
+        ⊘
+      </span>
+      <div className="min-w-0">
+        <div className="text-xs font-bold text-red-700">
+          Failed attempt {number} — revising...
+        </div>
+        <div className="text-xs text-red-700/80 mt-0.5 leading-relaxed break-words">
+          {reason}
+        </div>
+      </div>
     </div>
   );
 }

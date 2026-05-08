@@ -3,9 +3,14 @@ export type Column = "backlog" | "in_progress" | "review" | "done";
 export type Priority = "low" | "medium" | "high";
 
 export type LogEntry = {
-  kind: "status" | "tool_use" | "agent_text" | "score" | "system";
+  kind: "status" | "tool_use" | "agent_text" | "score" | "system" | "failed";
   text: string;
   at: string;
+};
+
+export type FailedAttempt = {
+  number: number;
+  reason: string;
 };
 
 export type Ticket = {
@@ -23,6 +28,8 @@ export type Ticket = {
   status_pill: string | null;
   score_before: number | null;
   score_after: number | null;
+  attempt_number: number;
+  failed_attempt: FailedAttempt | null;
   log: LogEntry[];
 };
 

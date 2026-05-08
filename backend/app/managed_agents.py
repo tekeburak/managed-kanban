@@ -8,7 +8,7 @@ from typing import Any
 
 from anthropic import AsyncAnthropic
 
-from app.models import Column, LogEntry
+from app.models import Column, FailedAttempt, LogEntry
 from app.store import store
 
 _client: AsyncAnthropic | None = None
@@ -45,6 +45,10 @@ def _environment_id() -> str:
 STATUS_RE = re.compile(r"^[\s>*_`]*STATUS:[\s*_`]*(.+?)[\s*_`]*$", re.MULTILINE)
 SCORE_RE = re.compile(
     r"^[\s>*_`]*SCORE:[\s*_`]*(\d+)\s*(?:->|→|=>)\s*(\d+)[\s*_`]*$",
+    re.MULTILINE,
+)
+ATTEMPT_FAILED_RE = re.compile(
+    r"^[\s>*_`]*ATTEMPT_FAILED:[\s*_`]*(.+?)[\s*_`]*$",
     re.MULTILINE,
 )
 
@@ -182,8 +186,24 @@ async def _consume_agent_text(ticket_id: str, text: str) -> None:
             ),
         )
 
+    for m in ATTEMPT_FAILED_RE.finditer(text):
+        reason = m.group(1)
+        await store.update(
+            ticket_id,
+            lambda t, r=reason: (
+                setattr(
+                    t,
+                    "failed_attempt",
+                    FailedAttempt(number=t.attempt_number, reason=r),
+                ),
+                setattr(t, "attempt_number", t.attempt_number + 1),
+                t.log.append(LogEntry(kind="failed", text=r)),
+            ),
+        )
+
     narration = STATUS_RE.sub("", text)
-    narration = SCORE_RE.sub("", narration).strip()
+    narration = SCORE_RE.sub("", narration)
+    narration = ATTEMPT_FAILED_RE.sub("", narration).strip()
     if narration:
         await store.append_log(
             ticket_id,

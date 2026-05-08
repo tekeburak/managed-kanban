@@ -21,9 +21,14 @@ class Priority(str, Enum):
 
 
 class LogEntry(BaseModel):
-    kind: Literal["status", "tool_use", "agent_text", "score", "system"]
+    kind: Literal["status", "tool_use", "agent_text", "score", "system", "failed"]
     text: str
     at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class FailedAttempt(BaseModel):
+    number: int
+    reason: str
 
 
 class Ticket(BaseModel):
@@ -41,6 +46,8 @@ class Ticket(BaseModel):
     status_pill: str | None = None
     score_before: int | None = None
     score_after: int | None = None
+    attempt_number: int = 1
+    failed_attempt: FailedAttempt | None = None
     log: list[LogEntry] = Field(default_factory=list)
 
 

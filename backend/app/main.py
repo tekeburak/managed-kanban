@@ -87,6 +87,8 @@ async def move_ticket(ticket_id: str, payload: dict) -> Ticket:
                 setattr(t, "status_pill", None),
                 setattr(t, "score_before", None),
                 setattr(t, "score_after", None),
+                setattr(t, "attempt_number", 1),
+                setattr(t, "failed_attempt", None),
                 t.log.clear(),
             ),
         )
