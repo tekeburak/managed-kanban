@@ -1,0 +1,24 @@
+{
+  "name": "managed-kanban",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {
+      "label": "managed-kanban",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postAttachCommand": "bash .devcontainer/start.sh",
+  "secrets": {
+    "ANTHROPIC_API_KEY": {
+      "description": "Anthropic API key (required)."
+    },
+    "MANAGED_AGENT_ID": {
+      "description": "Optional: existing managed agent ID. Skip creation if set."
+    },
+    "MANAGED_ENVIRONMENT_ID": {
+      "description": "Optional: existing managed environment ID. Skip creation if set."
+    }
+  }
+}
