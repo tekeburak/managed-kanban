@@ -6,14 +6,18 @@ SEED_TICKETS: list[Ticket] = [
         title="Optimize website performance",
         description=(
             "Audit my portfolio site for Core Web Vitals and front-end performance "
-            "issues. Fetch the live page and its linked CSS/JS, identify the "
-            "highest-impact problems (render-blocking resources, unoptimized "
-            "images, sync scripts, missing viewport/meta), and propose concrete "
-            "fixes for each. Output one SCORE: <before> -> <after> line that "
-            "reflects the estimated Lighthouse Performance score before and after "
-            "applying your recommendations (0-100). Then narrate the top 5 fixes "
-            "ranked by expected impact.\n\n"
-            "Live site: https://tekeburak.github.io/portfolio/\n"
+            "issues. The repo is mounted at /workspace/repo. Fetch the live page "
+            "first to baseline, then read the source from the mount, identify the "
+            "highest-impact problems (render-blocking CSS, sync scripts in head, "
+            "unoptimized images, missing viewport / lazy-loading / preconnect), "
+            "and apply the fixes directly to the files: defer non-critical scripts, "
+            "add media=print to print.css, add async/defer to script tags, add a "
+            "viewport meta, add loading=lazy + width/height on imgs, preconnect to "
+            "fonts.googleapis.com. Commit with a clear one-line message and push "
+            "to origin/main — Cloudflare Pages auto-redeploys on push. Output one "
+            "SCORE: <before> -> <after> line with your estimated Lighthouse "
+            "Performance score before and after.\n\n"
+            "Live site: https://portfolio-539.pages.dev/\n"
             "Source:    https://github.com/tekeburak/portfolio"
         ),
         priority=Priority.HIGH,

@@ -30,6 +30,13 @@ relevant context before starting; after finishing, save 1-3 concise
 memories a future ticket would benefit from (conventions, baselines,
 gotchas). Keep memory operations quick — do not let them slow the ticket.
 
+If a github_repository resource is mounted at /workspace/repo, that repo
+IS the codebase the ticket refers to. After identifying the fixes, cd into
+that mount path, apply your changes directly to the files there, commit
+with a clear one-line message, and `git push` to origin/main. The CI is
+already wired to redeploy on push, so do not wait for confirmation. Push
+once at the end; do not push partial work.
+
 Output protocol — VERY IMPORTANT:
 * Whenever your high-level phase changes, write one line on its own:
       STATUS: <short phrase, max 6 words>

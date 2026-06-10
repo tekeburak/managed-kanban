@@ -39,6 +39,22 @@ def _environment_id() -> str:
     return value
 
 
+_GITHUB_URL_RE = re.compile(
+    r"https?://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?",
+    re.IGNORECASE,
+)
+
+
+def _extract_github_repo(text: str) -> str | None:
+    m = _GITHUB_URL_RE.search(text)
+    if not m:
+        return None
+    url = m.group(0).rstrip("/")
+    if not url.endswith(".git"):
+        url += ".git"
+    return url
+
+
 _MEMORY_INSTRUCTIONS = (
     "Persistent memory shared across all kanban tickets. Before starting, "
     "check for memories relevant to the ticket. After finishing, save 1-3 "
@@ -97,18 +113,30 @@ async def run_session_for_ticket(ticket_id: str) -> None:
     # Attach the shared Managed Agents memory store so the agent carries
     # learnings across tickets — the real memory primitive, not a prompt hack.
     memory_store_id = await ensure_memory_store()
-    resources = (
-        [
+    resources: list[dict] = []
+    if memory_store_id:
+        resources.append(
             {
                 "type": "memory_store",
                 "memory_store_id": memory_store_id,
                 "access": "read_write",
                 "instructions": _MEMORY_INSTRUCTIONS,
             }
-        ]
-        if memory_store_id
-        else []
-    )
+        )
+
+    # If the ticket description names a GitHub repo and we have a token,
+    # mount the repo into the sandbox so the agent can edit, commit, push.
+    repo_url = _extract_github_repo(ticket.description)
+    gh_token = os.environ.get("PORTFOLIO_GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if repo_url and gh_token:
+        resources.append(
+            {
+                "type": "github_repository",
+                "url": repo_url,
+                "authorization_token": gh_token,
+                "mount_path": "/workspace/repo",
+            }
+        )
 
     session = await api.beta.sessions.create(
         agent=_agent_id(),
