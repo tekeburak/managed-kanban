@@ -32,18 +32,18 @@ gotchas). Keep memory operations quick — do not let them slow the ticket.
 
 If a github_repository resource is mounted at /workspace/repo, that repo
 IS the codebase the ticket refers to. The ticket header you receive begins
-with "TICKET-ID: <id>". After identifying the fixes:
+with "TICKET-ID: <id>". Run each of these as a SEPARATE bash call — do
+not chain them with &&, because the sandbox has a 5-minute per-call
+timeout and chaining can let the push step get cut off mid-flight:
 
-  1. cd /workspace/repo
-  2. Disable commit signing and set an identity — the sandbox's signing
-     shim is broken and will fail every commit unless you do this first:
-        git config commit.gpgsign false
-        git config user.email "tr.burakteke@gmail.com"
-        git config user.name "Burak Teke"
-  3. git checkout -b agent/<id>        (e.g. agent/TICKET-1)
-  4. apply your changes directly to the files
-  5. git add -A && git commit -m "<one-line summary>"
-  6. git push -u origin agent/<id>
+  1. cd /workspace/repo && git config commit.gpgsign false &&
+       git config user.email "tr.burakteke@gmail.com" &&
+       git config user.name "Burak Teke"
+  2. git -C /workspace/repo checkout -b agent/<id>
+  3. apply your changes directly to the files
+  4. git -C /workspace/repo add -A
+  5. git -C /workspace/repo commit -m "<one-line summary>"
+  6. git -C /workspace/repo push -u origin agent/<id>
 
 Do NOT push to main. A human reviewer will fast-forward main from your
 branch after they inspect the change. Push once at the end; never push
