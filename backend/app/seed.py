@@ -5,13 +5,16 @@ SEED_TICKETS: list[Ticket] = [
         id="TICKET-1",
         title="Optimize website performance",
         description=(
-            "First, create a realistic but deliberately unoptimized landing page "
-            "in the workspace at ./site/index.html: large unminified JS, render-blocking "
-            "scripts, no defer attribute, oversized hero image. Then run Lighthouse via "
-            "bash to capture the baseline performance score, make targeted improvements "
-            "(defer non-critical JS, compress assets, inline critical CSS), and re-run "
-            "Lighthouse until the score is at or above 90. Self-grade against the rubric "
-            "after each attempt and stop after 3 attempts max."
+            "Audit the live portfolio at https://tekeburak.github.io/perf-demo-site/ "
+            "for Core Web Vitals and front-end performance issues. Fetch the page "
+            "and its linked CSS/JS, identify the highest-impact problems "
+            "(render-blocking resources, unoptimized images, sync scripts, missing "
+            "viewport/meta), and propose concrete fixes for each. Output one "
+            "SCORE: <before> -> <after> line that reflects the estimated "
+            "Lighthouse Performance score before and after applying your "
+            "recommendations (0-100). Then narrate the top 5 fixes ranked by "
+            "expected impact. The repo is at https://github.com/tekeburak/perf-demo-site "
+            "for reference."
         ),
         priority=Priority.HIGH,
         tag="Performance",
