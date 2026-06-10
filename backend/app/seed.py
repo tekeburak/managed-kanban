@@ -13,7 +13,7 @@ SEED_TICKETS: list[Ticket] = [
             "reflects the estimated Lighthouse Performance score before and after "
             "applying your recommendations (0-100). Then narrate the top 5 fixes "
             "ranked by expected impact.\n\n"
-            "Live site: https://tekeburak.github.io/portfolio/\n"
+            "Live site: https://portfolio-539.pages.dev/\n"
             "Source:    https://github.com/tekeburak/portfolio"
         ),
         priority=Priority.HIGH,
