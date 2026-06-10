@@ -159,10 +159,26 @@ async def run_session_for_ticket(ticket_id: str) -> None:
     notes = store.get_memory_notes().strip()
     header = f"TICKET-ID: {ticket.id}"
     body = ticket.description
+
+    # Embed the github token into the user message when a github_repository
+    # resource is mounted — the sandbox's credential helper is unreliable,
+    # so the agent rewrites the remote URL to include the token and pushes
+    # over plain HTTPS. The user_text never leaves the Anthropic API.
+    token_hint = ""
+    if repo_url and gh_token:
+        token_hint = (
+            f"\n\nFor git push, the sandbox's credential helper hangs. Before "
+            f"pushing, run exactly:\n"
+            f"    git -C /workspace/repo remote set-url origin "
+            f"https://x-access-token:{gh_token}@{repo_url.replace('https://', '').replace('.git', '')}.git\n"
+            f"Then `git -C /workspace/repo push -u origin agent/{ticket.id}` "
+            f"will return in seconds."
+        )
+
     if notes:
-        user_text = f"{header}\n\nStanding notes / memory:\n{notes}\n\n---\n\n{body}"
+        user_text = f"{header}\n\nStanding notes / memory:\n{notes}\n\n---\n\n{body}{token_hint}"
     else:
-        user_text = f"{header}\n\n{body}"
+        user_text = f"{header}\n\n{body}{token_hint}"
 
     # events.stream() is an async function that returns an AsyncStream context
     # manager — hence the doubled `async with await ...`.
