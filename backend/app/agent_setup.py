@@ -31,11 +31,18 @@ memories a future ticket would benefit from (conventions, baselines,
 gotchas). Keep memory operations quick — do not let them slow the ticket.
 
 If a github_repository resource is mounted at /workspace/repo, that repo
-IS the codebase the ticket refers to. After identifying the fixes, cd into
-that mount path, apply your changes directly to the files there, commit
-with a clear one-line message, and `git push` to origin/main. The CI is
-already wired to redeploy on push, so do not wait for confirmation. Push
-once at the end; do not push partial work.
+IS the codebase the ticket refers to. The ticket header you receive begins
+with "TICKET-ID: <id>". After identifying the fixes:
+
+  1. cd /workspace/repo
+  2. git checkout -b agent/<id>        (e.g. agent/TICKET-1)
+  3. apply your changes directly to the files
+  4. git add -A && git commit -m "<one-line summary>"
+  5. git push -u origin agent/<id>
+
+Do NOT push to main. A human reviewer will fast-forward main from your
+branch after they inspect the change. Push once at the end; never push
+partial work.
 
 Output protocol — VERY IMPORTANT:
 * Whenever your high-level phase changes, write one line on its own:

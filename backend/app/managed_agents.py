@@ -157,11 +157,12 @@ async def run_session_for_ticket(ticket_id: str) -> None:
     )
 
     notes = store.get_memory_notes().strip()
-    user_text = (
-        f"Standing notes / memory:\n{notes}\n\n---\n\n{ticket.description}"
-        if notes
-        else ticket.description
-    )
+    header = f"TICKET-ID: {ticket.id}"
+    body = ticket.description
+    if notes:
+        user_text = f"{header}\n\nStanding notes / memory:\n{notes}\n\n---\n\n{body}"
+    else:
+        user_text = f"{header}\n\n{body}"
 
     # events.stream() is an async function that returns an AsyncStream context
     # manager — hence the doubled `async with await ...`.

@@ -3,7 +3,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import time
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,6 +22,7 @@ from app.agent_setup import SYSTEM_PROMPT
 from app.managed_agents import cancel_session_task, launch_session_task
 from app.models import (
     Column,
+    LogEntry,
     MemoryItem,
     MemoryNotes,
     MemoryState,
@@ -75,6 +79,22 @@ async def move_ticket(ticket_id: str, payload: dict) -> Ticket:
         await cancel_session_task(ticket_id)
 
     snapshot = await store.move(ticket_id, column)
+
+    # Drag from Review to Done is the human approval — fast-forward the
+    # repo's main to the agent branch so Cloudflare Pages redeploys.
+    if column == Column.DONE and current.column == Column.REVIEW:
+        try:
+            merged = await _ff_agent_branch_to_main(current)
+            if merged:
+                await store.append_log(
+                    ticket_id,
+                    LogEntry(kind="system", text=f"Merged {merged} → main."),
+                )
+        except Exception as exc:
+            await store.append_log(
+                ticket_id,
+                LogEntry(kind="system", text=f"Merge failed: {exc}"),
+            )
 
     # Drag into "In Progress" is the trigger that fires a Managed Agents
     # session. Every other transition is just a UI move.
@@ -168,6 +188,63 @@ def get_memory() -> MemoryState:
 def put_memory(payload: MemoryNotes) -> MemoryNotes:
     store.set_memory_notes(payload.notes)
     return MemoryNotes(notes=store.get_memory_notes())
+
+
+_GH_REPO_RE = re.compile(
+    r"https?://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?(?:/|\s|$)",
+    re.IGNORECASE,
+)
+
+
+def _extract_owner_repo(text: str) -> tuple[str, str] | None:
+    m = _GH_REPO_RE.search(text)
+    if not m:
+        return None
+    return m.group(1), m.group(2)
+
+
+async def _ff_agent_branch_to_main(ticket: Ticket) -> str | None:
+    """Fast-forward main to the agent's branch for this ticket.
+
+    Returns the branch name on success, None if there is no repo/token or
+    no agent branch exists yet.
+    """
+    token = os.environ.get("PORTFOLIO_GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if not token:
+        return None
+    pair = _extract_owner_repo(ticket.description)
+    if not pair:
+        return None
+    owner, repo = pair
+    branch = f"agent/{ticket.id}"
+
+    def _api(method: str, path: str, body: dict | None = None) -> dict:
+        req = urllib.request.Request(
+            f"https://api.github.com{path}",
+            method=method,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            data=json.dumps(body).encode() if body else None,
+        )
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read() or b"{}")
+
+    def _do_merge() -> str:
+        # Look up the branch SHA — raises 404 if the agent didn't push.
+        branch_info = _api("GET", f"/repos/{owner}/{repo}/branches/{branch}")
+        sha = branch_info["commit"]["sha"]
+        # Fast-forward main to that SHA.
+        _api(
+            "PATCH",
+            f"/repos/{owner}/{repo}/git/refs/heads/main",
+            {"sha": sha, "force": False},
+        )
+        return branch
+
+    return await asyncio.to_thread(_do_merge)
 
 
 _AGENT_CACHE: dict[str, tuple[float, str, str]] = {}
