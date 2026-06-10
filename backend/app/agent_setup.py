@@ -25,6 +25,11 @@ Use the bash, file, and web tools available in your environment.
 Be FAST. Minimize prose. Take exactly ONE attempt. Measure once, report the
 score, and STOP — even if the rubric is missed. Do NOT retry or revise.
 
+You have a persistent memory store shared across tickets. Skim it for
+relevant context before starting; after finishing, save 1-3 concise
+memories a future ticket would benefit from (conventions, baselines,
+gotchas). Keep memory operations quick — do not let them slow the ticket.
+
 Output protocol — VERY IMPORTANT:
 * Whenever your high-level phase changes, write one line on its own:
       STATUS: <short phrase, max 6 words>
@@ -59,11 +64,13 @@ def main() -> int:
 
     agent_id = os.environ.get("MANAGED_AGENT_ID") or None
     environment_id = os.environ.get("MANAGED_ENVIRONMENT_ID") or None
+    memory_store_id = os.environ.get("MANAGED_MEMORY_STORE_ID") or None
 
-    if agent_id and environment_id:
+    if agent_id and environment_id and memory_store_id:
         print("Already configured. Reusing existing resources:")
-        print(f"  MANAGED_AGENT_ID       = {agent_id}")
-        print(f"  MANAGED_ENVIRONMENT_ID = {environment_id}")
+        print(f"  MANAGED_AGENT_ID        = {agent_id}")
+        print(f"  MANAGED_ENVIRONMENT_ID  = {environment_id}")
+        print(f"  MANAGED_MEMORY_STORE_ID = {memory_store_id}")
         return 0
 
     client = Anthropic()
@@ -96,12 +103,27 @@ def main() -> int:
         environment_id = environment.id
         print(f"  environment.id = {environment_id}")
 
-    _persist_env(agent_id=agent_id, environment_id=environment_id)
+    if memory_store_id:
+        print(f"Reusing existing memory store: {memory_store_id}")
+    else:
+        print("Creating managed-kanban memory store...")
+        memory_store = client.beta.memory_stores.create(
+            name="managed-kanban-memory",
+            description="Shared memory for kanban ticket agents",
+        )
+        memory_store_id = memory_store.id
+        print(f"  memory_store.id = {memory_store_id}")
+
+    _persist_env(
+        agent_id=agent_id,
+        environment_id=environment_id,
+        memory_store_id=memory_store_id,
+    )
     print(f"\nSaved IDs to {ENV_FILE}.")
     return 0
 
 
-def _persist_env(*, agent_id: str, environment_id: str) -> None:
+def _persist_env(*, agent_id: str, environment_id: str, memory_store_id: str) -> None:
     lines: list[str] = []
     if ENV_FILE.exists():
         lines = ENV_FILE.read_text().splitlines()
@@ -115,6 +137,7 @@ def _persist_env(*, agent_id: str, environment_id: str) -> None:
 
     upsert("MANAGED_AGENT_ID", agent_id)
     upsert("MANAGED_ENVIRONMENT_ID", environment_id)
+    upsert("MANAGED_MEMORY_STORE_ID", memory_store_id)
     ENV_FILE.write_text("\n".join(lines) + "\n")
 
 

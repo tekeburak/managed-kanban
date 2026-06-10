@@ -55,6 +55,19 @@ export type SessionInfo = {
   log_entries: number;
 };
 
+export type MemoryItem = {
+  path: string;
+  content: string | null;
+  updated_at: string | null;
+};
+
+export type MemoryState = {
+  notes: string;
+  store_id: string | null;
+  memories: MemoryItem[];
+  error: string | null;
+};
+
 export type Settings = {
   agent_id: string | null;
   environment_id: string | null;

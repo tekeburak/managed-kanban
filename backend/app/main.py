@@ -19,7 +19,9 @@ from app.agent_setup import SYSTEM_PROMPT
 from app.managed_agents import cancel_session_task, launch_session_task
 from app.models import (
     Column,
+    MemoryItem,
     MemoryNotes,
+    MemoryState,
     SessionInfo,
     SessionStatus,
     Settings,
@@ -132,8 +134,34 @@ def list_sessions() -> list[SessionInfo]:
 
 
 @app.get("/api/memory")
-def get_memory() -> MemoryNotes:
-    return MemoryNotes(notes=store.get_memory_notes())
+def get_memory() -> MemoryState:
+    """Local standing notes + the agent's actual Managed Agents memories."""
+    state = MemoryState(
+        notes=store.get_memory_notes(),
+        store_id=os.environ.get("MANAGED_MEMORY_STORE_ID"),
+    )
+    if not state.store_id:
+        return state
+    try:
+        client = Anthropic()
+        page = client.beta.memory_stores.memories.list(
+            state.store_id,
+            view="full",
+            order="desc",
+            limit=50,
+        )
+        state.memories = [
+            MemoryItem(
+                path=m.path,
+                content=getattr(m, "content", None),
+                updated_at=getattr(m, "updated_at", None),
+            )
+            for m in page
+            if getattr(m, "type", None) == "memory"
+        ]
+    except Exception as exc:
+        state.error = f"could not list memories: {exc}"
+    return state
 
 
 @app.put("/api/memory")

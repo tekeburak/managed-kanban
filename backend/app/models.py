@@ -76,6 +76,19 @@ class MemoryNotes(BaseModel):
     notes: str = ""
 
 
+class MemoryItem(BaseModel):
+    path: str
+    content: str | None = None
+    updated_at: datetime | None = None
+
+
+class MemoryState(BaseModel):
+    notes: str = ""
+    store_id: str | None = None
+    memories: list[MemoryItem] = Field(default_factory=list)
+    error: str | None = None
+
+
 class Settings(BaseModel):
     agent_id: str | None
     environment_id: str | None

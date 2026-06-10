@@ -1,4 +1,10 @@
-import type { Column, SessionInfo, Settings, Ticket } from "./types";
+import type {
+  Column,
+  MemoryState,
+  SessionInfo,
+  Settings,
+  Ticket,
+} from "./types";
 
 export async function listTickets(): Promise<Ticket[]> {
   const res = await fetch("/api/tickets");
@@ -40,7 +46,7 @@ export async function listSessions(): Promise<SessionInfo[]> {
   return res.json();
 }
 
-export async function getMemory(): Promise<{ notes: string }> {
+export async function getMemory(): Promise<MemoryState> {
   const res = await fetch("/api/memory");
   if (!res.ok) throw new Error("failed to read memory");
   return res.json();

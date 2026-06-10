@@ -39,6 +39,34 @@ def _environment_id() -> str:
     return value
 
 
+_MEMORY_INSTRUCTIONS = (
+    "Persistent memory shared across all kanban tickets. Before starting, "
+    "check for memories relevant to the ticket. After finishing, save 1-3 "
+    "concise memories: project conventions you discovered, measurements, "
+    "and anything a future ticket would benefit from knowing."
+)
+
+
+async def ensure_memory_store() -> str | None:
+    """Return the managed memory store ID, creating one on first use.
+
+    Optional by design: if creation fails (e.g. the API key lacks the beta)
+    sessions still run, just without persistent memory.
+    """
+    value = os.environ.get("MANAGED_MEMORY_STORE_ID")
+    if value:
+        return value
+    try:
+        ms = await client().beta.memory_stores.create(
+            name="managed-kanban-memory",
+            description="Shared memory for kanban ticket agents",
+        )
+    except Exception:
+        return None
+    os.environ["MANAGED_MEMORY_STORE_ID"] = ms.id
+    return ms.id
+
+
 # Agent system prompt asks for STATUS:/SCORE: lines so the frontend can lift
 # them out of the message stream and render them as pills/widgets — without
 # needing a separately-hosted MCP control server.
@@ -66,10 +94,27 @@ async def run_session_for_ticket(ticket_id: str) -> None:
 
     api = client()
 
+    # Attach the shared Managed Agents memory store so the agent carries
+    # learnings across tickets — the real memory primitive, not a prompt hack.
+    memory_store_id = await ensure_memory_store()
+    resources = (
+        [
+            {
+                "type": "memory_store",
+                "memory_store_id": memory_store_id,
+                "access": "read_write",
+                "instructions": _MEMORY_INSTRUCTIONS,
+            }
+        ]
+        if memory_store_id
+        else []
+    )
+
     session = await api.beta.sessions.create(
         agent=_agent_id(),
         environment_id=_environment_id(),
         title=f"{ticket.id}: {ticket.title}",
+        resources=resources,
     )
 
     store.record_session(session_id=session.id, ticket_id=ticket_id)
