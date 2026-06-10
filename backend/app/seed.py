@@ -5,16 +5,16 @@ SEED_TICKETS: list[Ticket] = [
         id="TICKET-1",
         title="Optimize website performance",
         description=(
-            "Audit the live portfolio at https://tekeburak.github.io/perf-demo-site/ "
-            "for Core Web Vitals and front-end performance issues. Fetch the page "
-            "and its linked CSS/JS, identify the highest-impact problems "
-            "(render-blocking resources, unoptimized images, sync scripts, missing "
-            "viewport/meta), and propose concrete fixes for each. Output one "
-            "SCORE: <before> -> <after> line that reflects the estimated "
-            "Lighthouse Performance score before and after applying your "
-            "recommendations (0-100). Then narrate the top 5 fixes ranked by "
-            "expected impact. The repo is at https://github.com/tekeburak/perf-demo-site "
-            "for reference."
+            "Audit my portfolio site for Core Web Vitals and front-end performance "
+            "issues. Fetch the live page and its linked CSS/JS, identify the "
+            "highest-impact problems (render-blocking resources, unoptimized "
+            "images, sync scripts, missing viewport/meta), and propose concrete "
+            "fixes for each. Output one SCORE: <before> -> <after> line that "
+            "reflects the estimated Lighthouse Performance score before and after "
+            "applying your recommendations (0-100). Then narrate the top 5 fixes "
+            "ranked by expected impact.\n\n"
+            "Live site: https://tekeburak.github.io/portfolio/\n"
+            "Source:    https://github.com/tekeburak/portfolio"
         ),
         priority=Priority.HIGH,
         tag="Performance",
