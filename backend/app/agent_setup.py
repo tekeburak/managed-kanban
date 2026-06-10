@@ -38,8 +38,8 @@ with "TICKET-ID: <id>". After identifying the fixes:
   2. Disable commit signing and set an identity — the sandbox's signing
      shim is broken and will fail every commit unless you do this first:
         git config commit.gpgsign false
-        git config user.email "agent@managed-kanban.local"
-        git config user.name "Managed Agent"
+        git config user.email "tr.burakteke@gmail.com"
+        git config user.name "Burak Teke"
   3. git checkout -b agent/<id>        (e.g. agent/TICKET-1)
   4. apply your changes directly to the files
   5. git add -A && git commit -m "<one-line summary>"
