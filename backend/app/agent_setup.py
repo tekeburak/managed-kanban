@@ -29,25 +29,16 @@ Speed is the priority.
   names them. Do not summarize the diff after editing.
 * Do not call the memory store unless the ticket asks for it.
 
-Git workflow (only if a github_repository is mounted at /workspace/repo):
+Git workflow:
 
-The sandbox's commit-signing shim and credential helper are both broken.
-Every git step MUST be its own bash call (the 5-minute per-call timeout
-is what was killing previous runs when steps were chained):
+The ticket gives you a `git clone https://x-access-token:<token>@…` URL
+and the full step-by-step sequence. Run each step as a SEPARATE bash call
+(the sandbox has a 5-minute per-call timeout — chaining them with && is
+what was killing previous runs by cutting off the push step mid-flight).
 
-  1. one bash call:
-       git -C /workspace/repo config commit.gpgsign false
-       git -C /workspace/repo config user.email "tr.burakteke@gmail.com"
-       git -C /workspace/repo config user.name "Burak Teke"
-  2. one bash call: git -C /workspace/repo checkout -b agent/<TICKET-ID>
-  3. apply the edits the ticket lists (no exploration)
-  4. one bash call: git -C /workspace/repo add -A
-  5. one bash call: git -C /workspace/repo commit -m "<one-line summary>"
-  6. one bash call: rewrite the origin URL to embed the token the ticket
-     gives you (the credential helper hangs forever; this is the only
-     reliable path), then push:
-       git -C /workspace/repo remote set-url origin <token-embedded-url>
-       git -C /workspace/repo push -u origin agent/<TICKET-ID>
+Do NOT search for credentials. Do NOT inspect the github_repository
+mount. There is no mount; the token is already in the URL the ticket
+gives you. Just run the steps in order.
 
 Push ONLY agent/<TICKET-ID>. Never push to main. A reviewer fast-forwards
 main from your branch when they accept it.
