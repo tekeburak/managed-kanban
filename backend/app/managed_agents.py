@@ -124,19 +124,12 @@ async def run_session_for_ticket(ticket_id: str) -> None:
             }
         )
 
-    # If the ticket description names a GitHub repo and we have a token,
-    # mount the repo into the sandbox so the agent can edit, commit, push.
+    # github_repository resource was unreliable: mount path inconsistent and
+    # its credential helper hung indefinitely on push. We now bypass it
+    # entirely and pass the token to the agent via user_text so it can
+    # clone over plain HTTPS with the token embedded in the URL.
     repo_url = _extract_github_repo(ticket.description)
     gh_token = os.environ.get("PORTFOLIO_GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-    if repo_url and gh_token:
-        resources.append(
-            {
-                "type": "github_repository",
-                "url": repo_url,
-                "authorization_token": gh_token,
-                "mount_path": "/workspace/repo",
-            }
-        )
 
     session = await api.beta.sessions.create(
         agent=_agent_id(),
@@ -160,25 +153,34 @@ async def run_session_for_ticket(ticket_id: str) -> None:
     header = f"TICKET-ID: {ticket.id}"
     body = ticket.description
 
-    # Embed the github token into the user message when a github_repository
-    # resource is mounted — the sandbox's credential helper is unreliable,
-    # so the agent rewrites the remote URL to include the token and pushes
-    # over plain HTTPS. The user_text never leaves the Anthropic API.
-    token_hint = ""
+    # Hand the agent the complete clone + push recipe with the token embedded
+    # in the URL. The github_repository resource and Anthropic's credential
+    # helper proved unreliable; a plain HTTPS clone with a tokenized URL
+    # works every time.
+    repo_block = ""
     if repo_url and gh_token:
-        token_hint = (
-            f"\n\nFor git push, the sandbox's credential helper hangs. Before "
-            f"pushing, run exactly:\n"
-            f"    git -C /workspace/repo remote set-url origin "
-            f"https://x-access-token:{gh_token}@{repo_url.replace('https://', '').replace('.git', '')}.git\n"
-            f"Then `git -C /workspace/repo push -u origin agent/{ticket.id}` "
-            f"will return in seconds."
+        host_path = repo_url.replace("https://", "").replace(".git", "")
+        tokened = f"https://x-access-token:{gh_token}@{host_path}.git"
+        repo_block = (
+            "\n\nRepo access — use these exact commands; each is a separate "
+            "bash call:\n"
+            f"  git clone {tokened} /tmp/repo\n"
+            "  cd /tmp/repo && git config commit.gpgsign false\n"
+            "  cd /tmp/repo && git config user.email \"tr.burakteke@gmail.com\"\n"
+            "  cd /tmp/repo && git config user.name \"Burak Teke\"\n"
+            f"  cd /tmp/repo && git checkout -b agent/{ticket.id}\n"
+            "  (apply your edits to files under /tmp/repo)\n"
+            "  cd /tmp/repo && git add -A\n"
+            "  cd /tmp/repo && git commit -m \"<one-line summary>\"\n"
+            f"  cd /tmp/repo && git push -u origin agent/{ticket.id}\n"
+            "The URL already carries auth — git will never prompt and never "
+            "hang on credentials."
         )
 
     if notes:
-        user_text = f"{header}\n\nStanding notes / memory:\n{notes}\n\n---\n\n{body}{token_hint}"
+        user_text = f"{header}\n\nStanding notes / memory:\n{notes}\n\n---\n\n{body}{repo_block}"
     else:
-        user_text = f"{header}\n\n{body}{token_hint}"
+        user_text = f"{header}\n\n{body}{repo_block}"
 
     # events.stream() is an async function that returns an AsyncStream context
     # manager — hence the doubled `async with await ...`.
